@@ -1,0 +1,90 @@
+{
+  "expo": {
+    "name": "WillwareTech Attendance",
+    "slug": "willware-attendance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "willware-attendance",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "owner": "willwaretech",
+    "privacy": "unlisted",
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "description": "WillwareTech Employee Attendance Management System - Track attendance, view payslips, and manage employee information.",
+    "githubUrl": "https://github.com/Aj056/RefactoredTimesheet",
+    "ios": {
+      "bundleIdentifier": "com.willwaretech.attendance",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "requireFullScreen": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera for profile pictures and document scanning.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images for profile pictures."
+      }
+    },
+    "android": {
+      "package": "com.willwaretech.attendance",
+      "versionCode": 1,
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 34,
+      "buildToolsVersion": "34.0.0",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-updates",
+        {
+          "username": "willwaretech"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 5000
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
+  }
+}
