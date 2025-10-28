@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Loading } from '../../components/ui/Loading';
+import { TabSafeContainer } from '../../components/ui/TabSafeContainer';
 import { Colors, Typography, Spacing } from '../../constants/theme';
 import apiClient from '../../services/apiClient';
 import { EmployeeDetailsResponse } from '../../types/api';
@@ -125,19 +126,23 @@ export default function ProfileScreen() {
 
     return (
       <>
-        {/* Header Card */}
+        {/* WillwareTech Header Card */}
         <Card style={styles.profileCard}>
           <View style={styles.header}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {employeeDetails.employeeName?.charAt(0)?.toUpperCase() || 'U'}
-              </Text>
+            <View style={styles.companyLogo}>
+              <Ionicons name="business" size={40} color="#1565C0" />
             </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{employeeDetails.employeeName}</Text>
-              <Text style={styles.userEmail}>{employeeDetails.employeeEmail}</Text>
-              <Text style={styles.userId}>ID: {employeeDetails._id}</Text>
+            <View style={styles.companyInfo}>
+              <Text style={styles.companyName}>WillwareTech</Text>
+              <Text style={styles.companyTagline}>Attendance Management System</Text>
+              <Text style={styles.userRole}>Employee Portal</Text>
             </View>
+          </View>
+
+          <View style={styles.userSection}>
+            <Text style={styles.userName}>{employeeDetails.employeeName}</Text>
+            <Text style={styles.userEmail}>{employeeDetails.employeeEmail}</Text>
+            <Text style={styles.userId}>Employee ID: {employeeDetails._id}</Text>
           </View>
 
           <Button
@@ -301,38 +306,40 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>My Profile</Text>
-      
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {employeeDetails ? renderUserData() : (
-          <Card style={styles.profileCard}>
-            <View style={styles.emptyState}>
-              <Ionicons name="person-outline" size={64} color={Colors.textSecondary} />
-              <Text style={styles.emptyStateTitle}>Loading Profile...</Text>
-              <Text style={styles.emptyStateText}>
-                Pull down to refresh if data doesn&apos;t load
-              </Text>
-            </View>
-          </Card>
-        )}
+      <TabSafeContainer>
+        <Text style={styles.title}>My Profile</Text>
         
-        <Card style={styles.logoutCard}>
-          <Button
-            text="Logout"
-            variant="danger"
-            icon="log-out"
-            onPress={handleLogout}
-            fullWidth
-          />
-        </Card>
-      </ScrollView>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {employeeDetails ? renderUserData() : (
+            <Card style={styles.profileCard}>
+              <View style={styles.emptyState}>
+                <Ionicons name="person-outline" size={64} color={Colors.textSecondary} />
+                <Text style={styles.emptyStateTitle}>Loading Profile...</Text>
+                <Text style={styles.emptyStateText}>
+                  Pull down to refresh if data doesn&apos;t load
+                </Text>
+              </View>
+            </Card>
+          )}
+          
+          <Card style={styles.logoutCard}>
+            <Button
+              text="Logout"
+              variant="danger"
+              icon="log-out"
+              onPress={handleLogout}
+              fullWidth
+            />
+          </Card>
+        </ScrollView>
+      </TabSafeContainer>
     </SafeAreaView>
   );
 }
@@ -534,5 +541,46 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+
+  // WillwareTech Branding Styles
+  companyLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.primaryLight + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+
+  companyInfo: {
+    flex: 1,
+  },
+
+  companyName: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+
+  companyTagline: {
+    fontSize: Typography.fontSize.sm, 
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+
+  userRole: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.primary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+
+  userSection: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.md,
+    marginBottom: Spacing.md,
   },
 });

@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Loading } from '../../components/ui/Loading';
+import { TabSafeContainer } from '../../components/ui/TabSafeContainer';
 import { Colors, Typography, Spacing } from '../../constants/theme';
 import apiClient from '../../services/apiClient';
 import { PayslipResponse, MONTH_NAMES, MonthName } from '../../types/api';
@@ -296,40 +297,42 @@ export default function PayslipScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Payslip</Text>
-      
-      {renderMonthSelector()}
-      
-      {isLoading ? (
-        <Loading message="Loading payslip..." />
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {payslipData ? (
-            <>
-              {renderPayslipHeader()}
-              {renderPayslipDetails()}
-              
-              <Button
-                text="Download PDF"
-                icon="download"
-                onPress={handleOpenPayslipWebsite}
-                fullWidth
-                style={styles.downloadButton}
-              />
-              
-              <Text style={styles.downloadNote}>
-                Opens in browser to download your {moment().month(selectedMonth).format('MMMM')} {selectedYear} payslip
-              </Text>
-            </>
-          ) : (
-            renderNoData()
-          )}
-        </ScrollView>
-      )}
+      <TabSafeContainer>
+        <Text style={styles.title}>Payslip</Text>
+        
+        {renderMonthSelector()}
+        
+        {isLoading ? (
+          <Loading message="Loading payslip..." />
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {payslipData ? (
+              <>
+                {renderPayslipHeader()}
+                {renderPayslipDetails()}
+                
+                <Button
+                  text="Download PDF"
+                  icon="download"
+                  onPress={handleOpenPayslipWebsite}
+                  fullWidth
+                  style={styles.downloadButton}
+                />
+                
+                <Text style={styles.downloadNote}>
+                  Opens in browser to download your {moment().month(selectedMonth).format('MMMM')} {selectedYear} payslip
+                </Text>
+              </>
+            ) : (
+              renderNoData()
+            )}
+          </ScrollView>
+        )}
+      </TabSafeContainer>
     </SafeAreaView>
   );
 }

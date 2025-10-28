@@ -12,6 +12,8 @@ interface AuthContextType extends AuthState {
   disableBiometric: () => Promise<void>;
   isBiometricEnabled: boolean;
   refreshAuth: () => Promise<void>;
+  showIntro: boolean;
+  completeIntro: () => void;
 }
 
 // Create the context
@@ -42,13 +44,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
+
+  // Complete intro and proceed to auth
+  const completeIntro = () => {
+    console.log('🎬 WillwareTech intro completed, transitioning to app...');
+    setShowIntro(false);
+  };
 
   // Initialize authentication state on app start
   useEffect(() => {
-    initializeAuth();
+    console.log('🔄 Starting AuthContext initialization...');
+    initializeAuthFast();
   }, []);
 
-  const initializeAuth = async () => {
+  const initializeAuthFast = async () => {
+    try {
+      // Import authOptimizer dynamically to avoid circular dependencies
+      const { AuthOptimizer } = await import('../utils/authOptimizer');
+      const authOptimizer = AuthOptimizer.getInstance();
+      
+      // Get fast auth state (from cache if available) in background
+      const fastAuth = await authOptimizer.getFastAuthState();
+      
+      // Set initial auth state (intro will handle timing)
+      setAuthState({
+        isAuthenticated: fastAuth.isAuthenticated,
+        user: fastAuth.user,
+        token: fastAuth.token,
+        isLoading: false, // Stop loading immediately for better UX
+        error: null,
+      });
+
+      // If we should verify in background, do it without blocking UI
+      if (fastAuth.shouldVerify && fastAuth.token) {
+        verifyAuthInBackground(fastAuth.token, authOptimizer);
+      }
+
+      // Check biometric availability (non-blocking)
+      checkBiometricSupport();
+    } catch (error) {
+      console.error('Fast auth initialization failed:', error);
+      // Fallback to slow method
+      setShowIntro(false);
+      await initializeAuthSlow();
+    }
+  };
+
+  const verifyAuthInBackground = async (token: string, authOptimizer: any) => {
+    try {
+      const isValid = await authOptimizer.backgroundAuthVerification(token);
+      
+      if (!isValid) {
+        // Token is invalid, logout user
+        console.log('Token verification failed, logging out user');
+        await logout();
+      } else {
+        // Update cache with fresh timestamp
+        if (authState.user) {
+          await authOptimizer.cacheAuthData(authState.user, token);
+        }
+      }
+    } catch (error) {
+      console.error('Background auth verification failed:', error);
+      // Don't logout on network errors, keep user logged in
+    }
+  };
+
+  const initializeAuthSlow = async () => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -88,9 +151,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: null,
         });
       }
-
-      // Check biometric availability and preference
-      await checkBiometricSupport();
     } catch (error) {
       console.error('Auth initialization failed:', error);
       setAuthState({
@@ -144,6 +204,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: null,
       });
 
+      // Cache auth data for fast loading next time
+      try {
+        const { AuthOptimizer } = await import('../utils/authOptimizer');
+        const authOptimizer = AuthOptimizer.getInstance();
+        await authOptimizer.cacheAuthData(user, response.token.tokens);
+        console.log('Auth data cached successfully');
+      } catch (cacheError) {
+        console.error('Failed to cache auth data:', cacheError);
+        // Don't fail login if caching fails
+      }
+
       // Store remember me preference
       if (rememberMe) {
         // Additional logic for remember me can be added here
@@ -169,6 +240,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       await apiClient.logout();
       
+      // Clear auth cache
+      try {
+        const { AuthOptimizer } = await import('../utils/authOptimizer');
+        const authOptimizer = AuthOptimizer.getInstance();
+        await authOptimizer.clearAuthCache();
+        console.log('Auth cache cleared');
+      } catch (cacheError) {
+        console.error('Failed to clear auth cache:', cacheError);
+      }
+      
       setAuthState({
         isAuthenticated: false,
         user: null,
@@ -178,7 +259,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
     } catch (error) {
       console.error('Logout failed:', error);
-      // Even if logout fails, clear local state
+      // Even if logout fails, clear local state and cache
+      try {
+        const { AuthOptimizer } = await import('../utils/authOptimizer');
+        const authOptimizer = AuthOptimizer.getInstance();
+        await authOptimizer.clearAuthCache();
+      } catch (cacheError) {
+        console.error('Failed to clear auth cache:', cacheError);
+      }
+      
       setAuthState({
         isAuthenticated: false,
         user: null,
@@ -288,6 +377,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     disableBiometric,
     isBiometricEnabled,
     refreshAuth,
+    showIntro,
+    completeIntro,
   };
 
   return (

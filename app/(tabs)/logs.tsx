@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 import { Card } from '../../components/ui/Card';
 import { Loading } from '../../components/ui/Loading';
+import { TabSafeContainer } from '../../components/ui/TabSafeContainer';
 import { Colors, Typography, Spacing, Theme } from '../../constants/theme';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/ToastProvider';
@@ -305,20 +306,22 @@ export default function AttendanceLogsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {renderHeader()}
-        {renderTitle()}
-        {renderFilters()}
-        {renderStats()}
-        {renderAttendanceList()}
-      </ScrollView>
+      <TabSafeContainer>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {renderHeader()}
+          {renderTitle()}
+          {renderFilters()}
+          {renderStats()}
+          {renderAttendanceList()}
+        </ScrollView>
+      </TabSafeContainer>
     </SafeAreaView>
   );
 }

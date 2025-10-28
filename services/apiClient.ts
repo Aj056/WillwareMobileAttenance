@@ -321,7 +321,7 @@ class ApiClient {
     try {
       return await this.cache.getOrSet(
         `${CACHE_KEYS.USER_PROFILE}_${employeeId}`,
-        () => this.get<EmployeeDetailsResponse>(`/empdetails/${employeeId}`),
+        () => this.get<EmployeeDetailsResponse>(`/view/${employeeId}`),
         5 * 60 * 1000 // 5 minutes cache
       );
     } catch (error) {
@@ -459,7 +459,7 @@ class ApiClient {
   }
 
   // Motivational Quotes
-  async getMotivationalQuote(): Promise<Quote> {
+  async getMotivationalQuote(): Promise<any> {
     try {
       // Try external API with timeout
       const controller = new AbortController();
@@ -473,12 +473,23 @@ class ApiClient {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.Quote && data.Author) {
+        
+        // Handle different response formats
+        if (data.text && data.author) {
+          // Format: { text, author, tags, id, author_id }
+          return {
+            text: data.text,
+            author: data.author,
+            Quote: data.text,  // Fallback for old format
+            Author: data.author // Fallback for old format
+          };
+        } else if (data.Quote && data.Author) {
+          // Format: { Quote, Author, Tags, ID }
           return {
             Quote: data.Quote,
             Author: data.Author,
-            Tags: data.Tags || '',
-            ID: data.ID || Math.floor(Math.random() * 1000)
+            text: data.Quote,   // Fallback for new format
+            author: data.Author // Fallback for new format
           };
         }
       }
@@ -487,7 +498,13 @@ class ApiClient {
     } catch (error) {
       // Fallback to local quotes
       const randomIndex = Math.floor(Math.random() * FALLBACK_QUOTES.length);
-      return FALLBACK_QUOTES[randomIndex];
+      const fallback = FALLBACK_QUOTES[randomIndex];
+      return {
+        Quote: fallback.Quote,
+        Author: fallback.Author,
+        text: fallback.Quote,
+        author: fallback.Author
+      };
     }
   }
 

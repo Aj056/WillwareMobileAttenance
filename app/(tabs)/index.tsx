@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,10 @@ import { router } from 'expo-router';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { TabSafeContainer } from '../../components/ui/TabSafeContainer';
 import { useMemoryCleanup } from '../../hooks/useMemoryCleanup';
 import { useLoadingState, LoadingOverlay } from '../../components/LoadingComponents';
+import { useDashboardPreloader } from '../../hooks/useDashboardPreloader';
 import { Card } from '../../components/ui/Card';
 import { Colors, Typography, Spacing, Theme } from '../../constants/theme';
 import apiClient from '../../services/apiClient';
@@ -27,8 +29,6 @@ export default function DashboardScreen() {
   const { user, logout } = useAuth();
   const { loadingState, startLoading, stopLoading } = useLoadingState();
   const { showSuccess, showError, showWarning } = useToast();
-  const [employeeDetails, setEmployeeDetails] = useState<any>(null);
-  const [currentQuote, setCurrentQuote] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(moment());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
@@ -38,13 +38,21 @@ export default function DashboardScreen() {
     myTotalHours: '0:00',
     todayHours: '0:00'
   });
-  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+
+  // Use preloader for faster dashboard loading with smart caching
+  const {
+    employeeDetails,
+    todayAttendance,
+    currentQuote,
+    isLoading: preloaderLoading,
+    error: preloaderError,
+    refreshDashboardData,
+    forceRefreshAfterCheckInOut
+  } = useDashboardPreloader(user?.id);
 
   // Memory cleanup
   useMemoryCleanup({
     onUnmount: () => {
-      setEmployeeDetails(null);
-      setCurrentQuote(null);
       setDashboardStats({ totalEmployees: 0, activeEmployees: 0, checkedInToday: 0, myTotalHours: '0:00', todayHours: '0:00' });
     },
   });
@@ -58,64 +66,34 @@ export default function DashboardScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // Load initial data
+  // Update dashboard stats when preloader finishes
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-    const loadDashboardData = async () => {
-    try {
-      startLoading('Loading dashboard...');
-      
-      if (!user?.id) {
-        showError('User session expired. Please log in again.');
-        return;
-      }
-
-      // Load required data in parallel with retry mechanism
-      const [employeeViewData, quoteData] = await Promise.allSettled([
-        withRetry(() => apiClient.getEmployeeView(user.id), 2),
-        withRetry(() => apiClient.getRandomQuote(), 1) // Less critical, fewer retries
-      ]);
-
-      // Handle employee data
-      if (employeeViewData.status === 'fulfilled') {
-        const data = employeeViewData.value;
-        
-        // Set dashboard statistics for hours display only
-        setDashboardStats({
-          totalEmployees: 0, // Not used anymore
-          activeEmployees: 0, // Not used anymore
-          checkedInToday: 0, // Not used anymore
-          myTotalHours: calculateTotalHours(data.timelog || []),
-          todayHours: calculateTodayHours(data.timelog || [])
-        });
-
-        // Set employee details and today's attendance
-        setEmployeeDetails(data);
-        setTodayAttendance(getTodayAttendance(data.timelog || []));
-      } else {
-        const error = handleApiError(employeeViewData.reason);
-        logError(error, 'Employee data loading');
-        showError('Failed to load employee data. Please try again.');
-      }
-
-      // Handle quote data (non-critical)
-      if (quoteData.status === 'fulfilled') {
-        setCurrentQuote(quoteData.value);
-      } else {
-        logError(quoteData.reason, 'Quote loading');
-        // Don't show error for quotes as it's not critical
-      }
-
-      stopLoading();
-    } catch (error) {
-      const appError = handleApiError(error);
-      logError(appError, 'Dashboard data loading');
-      showError('Failed to load dashboard. Please check your connection and try again.');
-      stopLoading();
+    if (employeeDetails?.timelog && !preloaderLoading) {
+      const timelog = employeeDetails.timelog || [];
+      setDashboardStats({
+        totalEmployees: 0,
+        activeEmployees: 0,
+        checkedInToday: 0,
+        myTotalHours: calculateTotalHours(timelog),
+        todayHours: calculateTodayHours(timelog)
+      });
     }
-  };
+  }, [employeeDetails, preloaderLoading]);
+
+  // Show appropriate error toasts based on error type
+  useEffect(() => {
+    if (preloaderError) {
+      if (preloaderError.includes('Server error')) {
+        showError('Server error - Please try again later');
+      } else if (preloaderError.includes('connection')) {
+        showWarning('Connection issue - Data may be outdated');
+      } else {
+        showError('Data fetch failed - Please try refreshing');
+      }
+    }
+  }, [preloaderError]);
+
+
 
   // Helper function to calculate total working hours
   const calculateTotalHours = (timelog: any[]) => {
@@ -142,45 +120,22 @@ export default function DashboardScreen() {
   };
 
   // Helper function to get today's attendance
-  const getTodayAttendance = (timelog: any[]) => {
-    const today = moment().format('DD/MM/YYYY');
-    return timelog.find(log => log.date === today) || null;
-  };
+  // Removed getTodayAttendance - now handled directly in renderCheckInStatus
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadDashboardData();
-    setIsRefreshing(false);
+    try {
+      // Manual refresh bypasses cache
+      await refreshDashboardData(true);
+      showSuccess('Attendance data refreshed');
+    } catch (error) {
+      showError('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const calculateWorkingHours = (timelog: any[]) => {
-    const today = moment().format('YYYY-MM-DD');
-    const thisWeekStart = moment().startOf('week');
-    const thisMonthStart = moment().startOf('month');
 
-    let todayHours = 0;
-    let weekHours = 0;
-    let monthHours = 0;
-
-    timelog.forEach((log) => {
-      const logDate = moment(log.date);
-      const hours = parseFloat(log.totalhours || '0');
-
-      if (log.date === today) {
-        todayHours = hours;
-      }
-
-      if (logDate.isSameOrAfter(thisWeekStart)) {
-        weekHours += hours;
-      }
-
-      if (logDate.isSameOrAfter(thisMonthStart)) {
-        monthHours += hours;
-      }
-    });
-
-    // Working hours are now handled in loadDashboardData via dashboardStats
-  };
 
   const handleCheckInOut = async () => {
     try {
@@ -192,13 +147,11 @@ export default function DashboardScreen() {
       // Show loading state
       startLoading('Processing check-in/out...');
 
-      // Determine if user is currently checked in based on today's attendance
-      const today = moment().format('DD/MM/YYYY');
-      const todayRecord = employeeDetails?.timelog?.find((log: any) => log.date === today);
-      const isCheckedIn = !!(todayRecord && todayRecord.checkin && !todayRecord.checkout);
+      // Use memoized today's record to determine check-in/out action
+      const isCheckedIn = !!(todayAttendanceRecord && todayAttendanceRecord.checkin && !todayAttendanceRecord.checkout);
       
       const action = isCheckedIn ? 'checkout' : 'checkin';
-      console.log(`Performing ${action} for user:`, user.id);
+      console.log(`🔄 Performing ${action} for user:`, user.id);
 
       // Make API call with retry mechanism
       const response = await withRetry(
@@ -206,28 +159,13 @@ export default function DashboardScreen() {
         2 // max 2 retries
       );
 
-      if (response.message) {
-        // Clear cache to ensure fresh data
-        await clearDashboardCache();
-        
-        // Update UI immediately with optimistic update
-        if (response.timelog && response.timelog.length > 0) {
-          const newRecord = response.timelog[0];
-          updateEmployeeDetailsOptimistically(newRecord);
-        }
-        
-        // Show success message with toast
+      if (response && response.message) {
+        // Show success message first
         showSuccess(response.message);
         
-        // Then refresh all dashboard data in background
-        setTimeout(async () => {
-          try {
-            await loadDashboardData();
-          } catch (refreshError) {
-            logError(refreshError, 'Dashboard refresh after check-in/out');
-            showWarning('Data refreshed but some information may be outdated');
-          }
-        }, 500);
+        // Force refresh to get updated state immediately (bypasses cache)
+        await forceRefreshAfterCheckInOut();
+        
       } else {
         throw new Error('Invalid response from server');
       }
@@ -240,58 +178,7 @@ export default function DashboardScreen() {
     }
   };
 
-  // Helper function to clear dashboard cache
-  const clearDashboardCache = async () => {
-    try {
-      // Clear relevant cache entries
-      const cacheManager = (await import('../../services/cacheManager')).default;
-      const cache = cacheManager.getInstance();
-      
-      if (user) {
-        await cache.remove(`employee_view_${user.id}`);
-        await cache.remove('all_employees_dashboard');
-        await cache.remove('dashboard_stats');
-        // Also invalidate any patterns that might be related
-        await cache.invalidatePattern(user.id.toString());
-      }
-    } catch (error) {
-      console.log('Cache clear failed:', error);
-    }
-  };
 
-  // Optimistic UI update
-  const updateEmployeeDetailsOptimistically = (newRecord: any) => {
-    if (!employeeDetails) return;
-    
-    const today = moment().format('DD/MM/YYYY');
-    const updatedTimelog = [...(employeeDetails.timelog || [])];
-    
-    // Find existing record for today
-    const existingIndex = updatedTimelog.findIndex((log: any) => log.date === today);
-    
-    if (existingIndex >= 0) {
-      // Update existing record with new data
-      updatedTimelog[existingIndex] = { 
-        ...updatedTimelog[existingIndex], 
-        ...newRecord,
-        date: today // Ensure date is preserved
-      };
-    } else {
-      // Add new record at the beginning
-      updatedTimelog.unshift({
-        ...newRecord,
-        date: today
-      });
-    }
-    
-    // Update employee details state immediately
-    setEmployeeDetails({
-      ...employeeDetails,
-      timelog: updatedTimelog
-    });
-    
-    console.log('Optimistically updated employee details with new record:', newRecord);
-  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -328,83 +215,283 @@ export default function DashboardScreen() {
     </View>
   );
 
+  // Memoize clock display to optimize rendering
+  const clockDisplay = useMemo(() => ({
+    time: currentTime.format('HH:mm:ss'),
+    date: currentTime.format('dddd, MMMM Do YYYY')
+  }), [currentTime.unix()]); // Only update when actual time changes (by second)
+
   const renderClock = () => (
     <Card style={styles.clockCard}>
       <View style={styles.clockContainer}>
         <Text style={styles.timeText}>
-          {currentTime.format('HH:mm:ss')}
+          {clockDisplay.time}
         </Text>
         <Text style={styles.dateText}>
-          {currentTime.format('dddd, MMMM Do YYYY')}
+          {clockDisplay.date}
         </Text>
       </View>
     </Card>
   );
 
+  // Memoize today's attendance record to prevent excessive recalculation
+  const todayAttendanceRecord = useMemo(() => {
+    if (!employeeDetails?.timelog) return null;
+    
+    const today = moment().format('DD/MM/YYYY');
+    const record = employeeDetails.timelog.find((log: any) => log.date === today);
+    
+    // Only log once when record changes, not on every render
+    if (record) {
+      console.log('📊 Today\'s attendance loaded:', { date: today, hours: record.totalhours, checkedIn: !!record.checkin, checkedOut: !!record.checkout });
+    }
+    
+    return record;
+  }, [employeeDetails?.timelog]);
+
   const renderCheckInStatus = () => {
-    const isCheckedIn = !!(todayAttendance && todayAttendance.checkin && !todayAttendance.checkout);
-    const hasCheckedOut = !!(todayAttendance && todayAttendance.checkout);
-    const statusColor = isCheckedIn ? Colors.success : hasCheckedOut ? Colors.info : Colors.warning;
-    const statusIcon = isCheckedIn ? 'checkmark-circle' : hasCheckedOut ? 'checkmark-done-circle' : 'time-outline';
-    const statusText = isCheckedIn ? 'Checked In' : hasCheckedOut ? 'Completed Today' : 'Not Started';
-
-    const checkInTime = todayAttendance?.checkin ? moment(todayAttendance.checkin).format('hh:mm A') : null;
-    const checkOutTime = todayAttendance?.checkout ? moment(todayAttendance.checkout).format('hh:mm A') : null;
-
-    return (
-      <Card style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <View style={styles.statusInfo}>
-            <Ionicons name={statusIcon} size={24} color={statusColor} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {statusText}
-            </Text>
+    // Show loading or error state while waiting for API data
+    if (preloaderLoading) {
+      return (
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusInfo}>
+              <Ionicons name="hourglass-outline" size={24} color={Colors.textSecondary} />
+              <Text style={[styles.statusText, { color: Colors.textSecondary }]}>
+                Loading attendance...
+              </Text>
+            </View>
           </View>
-          <View style={styles.timeInfo}>
-            {checkInTime && (
+        </Card>
+      );
+    }
+
+    // Show error state if API failed and we have no cached data
+    if (preloaderError && (!employeeDetails || !employeeDetails.timelog)) {
+      return (
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusInfo}>
+              <Ionicons name="warning-outline" size={24} color={Colors.warning} />
+              <Text style={[styles.statusText, { color: Colors.warning }]}>
+                Unable to load attendance
+              </Text>
+            </View>
+          </View>
+          
+          <Button
+            text="Retry"
+            variant="outline"
+            icon="refresh"
+            onPress={() => refreshDashboardData(true)}
+            fullWidth
+            style={styles.checkInButton}
+          />
+        </Card>
+      );
+    }
+
+    // Don't show check-in section if we have no attendance data
+    if (!employeeDetails || !employeeDetails.timelog) {
+      return null;
+    }
+
+    // Use memoized today's record
+    const todayRecord = todayAttendanceRecord;
+    
+    // Show status based on what API actually returned
+    if (!todayRecord) {
+      // No record for today - show Check In button
+      return (
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusInfo}>
+              <Ionicons name="time-outline" size={24} color={Colors.warning} />
+              <Text style={[styles.statusText, { color: Colors.warning }]}>
+                Not Started
+              </Text>
+            </View>
+            <View style={styles.timeInfo}>
+              <Text style={styles.todayHours}>Hours: 0:00</Text>
+            </View>
+          </View>
+          
+          <Button
+            text="Check In"
+            variant="primary"
+            icon="log-in"
+            onPress={handleCheckInOut}
+            fullWidth
+            style={styles.checkInButton}
+          />
+          
+          <Button
+            text="View All Records"
+            variant="outline"
+            icon="calendar"
+            onPress={() => router.push('/logs')}
+            fullWidth
+            style={styles.viewRecordsButton}
+          />
+        </Card>
+      );
+    }
+
+    // We have today's record - show status based on check-in/out times
+    const hasCheckedIn = !!todayRecord.checkin;
+    const hasCheckedOut = !!todayRecord.checkout;
+    
+    const checkInTime = hasCheckedIn ? moment(todayRecord.checkin).format('hh:mm A') : null;
+    const checkOutTime = hasCheckedOut ? moment(todayRecord.checkout).format('hh:mm A') : null;
+    const totalHours = todayRecord.totalhours || '0:00';
+
+    if (hasCheckedIn && hasCheckedOut) {
+      // Completed for the day
+      return (
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusInfo}>
+              <Ionicons name="checkmark-done-circle" size={24} color={Colors.info} />
+              <Text style={[styles.statusText, { color: Colors.info }]}>
+                Completed Today
+              </Text>
+            </View>
+            <View style={styles.timeInfo}>
               <Text style={styles.smallTimeText}>In: {checkInTime}</Text>
-            )}
-            {checkOutTime && (
               <Text style={styles.smallTimeText}>Out: {checkOutTime}</Text>
-            )}
-            <Text style={styles.todayHours}>
-              Hours: {dashboardStats.todayHours}
-            </Text>
+              <Text style={styles.todayHours}>Hours: {totalHours}</Text>
+            </View>
           </View>
-        </View>
-        
-        <Button
-          text={isCheckedIn ? 'Check Out' : hasCheckedOut ? 'Completed' : 'Check In'}
-          variant={isCheckedIn ? 'danger' : hasCheckedOut ? 'secondary' : 'primary'}
-          icon={isCheckedIn ? 'log-out' : hasCheckedOut ? 'checkmark' : 'log-in'}
-          onPress={hasCheckedOut ? () => {} : handleCheckInOut}
-          disabled={hasCheckedOut}
-          fullWidth
-          style={styles.checkInButton}
-        />
-        
-        <Button
-          text="View All Records"
-          variant="outline"
-          icon="calendar"
-          onPress={() => router.push('/logs')}
-          fullWidth
-          style={styles.viewRecordsButton}
-        />
-      </Card>
-    );
+          
+          <Button
+            text="Completed"
+            variant="secondary"
+            icon="checkmark"
+            onPress={() => {}}
+            disabled={true}
+            fullWidth
+            style={styles.checkInButton}
+          />
+          
+          <Button
+            text="View All Records"
+            variant="outline"
+            icon="calendar"
+            onPress={() => router.push('/logs')}
+            fullWidth
+            style={styles.viewRecordsButton}
+          />
+        </Card>
+      );
+    } else if (hasCheckedIn && !hasCheckedOut) {
+      // Checked in, waiting for checkout
+      return (
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusInfo}>
+              <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+              <Text style={[styles.statusText, { color: Colors.success }]}>
+                Checked In
+              </Text>
+            </View>
+            <View style={styles.timeInfo}>
+              <Text style={styles.smallTimeText}>In: {checkInTime}</Text>
+              <Text style={styles.todayHours}>Hours: {totalHours}</Text>
+            </View>
+          </View>
+          
+          <Button
+            text="Check Out"
+            variant="danger"
+            icon="log-out"
+            onPress={handleCheckInOut}
+            fullWidth
+            style={styles.checkInButton}
+          />
+          
+          <Button
+            text="View All Records"
+            variant="outline"
+            icon="calendar"
+            onPress={() => router.push('/logs')}
+            fullWidth
+            style={styles.viewRecordsButton}
+          />
+        </Card>
+      );
+    }
+
+    return null; // Fallback
   };
 
+  const refreshQuote = async () => {
+    try {
+      startLoading('Refreshing quote...');
+      // Clear only quote cache - don't refresh attendance data
+      const cacheManager = (await import('../../services/cacheManager')).default;
+      const cache = cacheManager.getInstance();
+      await cache.remove('daily_quote');
+      
+      // Get new quote without refreshing attendance data
+      const newQuote = await apiClient.getMotivationalQuote();
+      
+      // Update only the quote in the dashboard data (if needed)
+      showSuccess('Quote refreshed!');
+    } catch (error) {
+      showError('Failed to refresh quote');
+    } finally {
+      stopLoading();
+    }
+  };
+
+  // Memoize quote processing to prevent recalculation on every render
+  const processedQuote = useMemo(() => {
+    // Fallback quotes when API fails
+    const fallbackQuotes = [
+      { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+      { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
+      { text: "Don't be afraid to give up the good to go for the great.", author: "John D. Rockefeller" },
+      { text: "Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work.", author: "Steve Jobs" },
+      { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" }
+    ];
+
+    if (currentQuote) {
+      // Handle different quote API response formats
+      return {
+        text: currentQuote.text || currentQuote.Quote || fallbackQuotes[0].text,
+        author: currentQuote.author || currentQuote.Author || fallbackQuotes[0].author,
+        isOnline: true
+      };
+    } else {
+      // Use random fallback quote when API fails (consistent until quote changes)
+      const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
+      return {
+        text: fallbackQuotes[randomIndex].text,
+        author: fallbackQuotes[randomIndex].author,
+        isOnline: false
+      };
+    }
+  }, [currentQuote]);
+
   const renderQuote = () => {
-    if (!currentQuote) return null;
 
     return (
       <Card style={styles.quoteCard}>
-        <TouchableOpacity onPress={loadDashboardData} style={styles.quoteRefresh}>
-          <Ionicons name="refresh" size={20} color={Colors.textSecondary} />
+        <TouchableOpacity onPress={refreshQuote} style={styles.quoteRefresh}>
+          <Ionicons 
+            name="refresh" 
+            size={20} 
+            color={processedQuote.isOnline ? Colors.textSecondary : Colors.warning} 
+          />
         </TouchableOpacity>
-        <Text style={styles.quoteText}>&ldquo;{currentQuote.text || currentQuote.Quote}&rdquo;</Text>
-        <Text style={styles.quoteAuthor}>— {currentQuote.author || currentQuote.Author}</Text>
+        {!processedQuote.isOnline && (
+          <View style={styles.offlineIndicator}>
+            <Ionicons name="cloud-offline-outline" size={16} color={Colors.warning} />
+            <Text style={styles.offlineText}>Offline Quote</Text>
+          </View>
+        )}
+        <Text style={styles.quoteText}>&ldquo;{processedQuote.text}&rdquo;</Text>
+        <Text style={styles.quoteAuthor}>— {processedQuote.author}</Text>
       </Card>
     );
   };
@@ -413,19 +500,21 @@ export default function DashboardScreen() {
   
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {renderHeader()}
-        {renderClock()}
-        {renderCheckInStatus()}
-        {renderQuote()}
-      </ScrollView>
+      <TabSafeContainer>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {renderHeader()}
+          {renderClock()}
+          {renderCheckInStatus()}
+          {renderQuote()}
+        </ScrollView>
+      </TabSafeContainer>
       
       <LoadingOverlay 
         visible={loadingState.isLoading}
@@ -687,5 +776,20 @@ const styles = StyleSheet.create({
 
   viewRecordsButton: {
     marginTop: Spacing.sm,
+  },
+
+  // Offline indicator styles
+  offlineIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+
+  offlineText: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.warning,
+    marginLeft: Spacing.xs,
+    fontWeight: Typography.fontWeight.medium,
   },
 });

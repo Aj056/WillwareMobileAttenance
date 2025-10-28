@@ -46,22 +46,16 @@ const rl = readline.createInterface({
 rl.question('Would you like to start the EAS configuration now? (y/n): ', (answer) => {
   if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
     console.log('\n🔧 Starting EAS configuration...\n');
-    const { spawn } = require('child_process');
-    const easConfig = spawn('eas', ['build:configure'], { stdio: 'inherit' });
-    
-    easConfig.on('close', (code) => {
-      if (code === 0) {
-        console.log('\n✅ EAS configuration completed successfully!');
-        console.log('\n📖 Next steps:');
-        console.log('1. Review the generated eas.json file');
-        console.log('2. Run: npm run build:android:apk');
-        console.log('3. Check DEPLOYMENT_GUIDE.md for distribution methods');
-      } else {
-        console.log('\n❌ EAS configuration failed. Please check the error messages above.');
-        console.log('💡 Try running: eas login first, then run this script again.');
-      }
-      rl.close();
-    });
+    console.log('💡 Please run the following commands manually:');
+    console.log('\n1️⃣  First, login to Expo:');
+    console.log('   eas login');
+    console.log('\n2️⃣  Then configure the project:');
+    console.log('   eas build:configure');
+    console.log('\n3️⃣  Finally, build your first APK:');
+    console.log('   npm run build:android:apk');
+    console.log('\n📖 Why manual? Sometimes PATH issues prevent automatic execution.');
+    console.log('   These manual steps ensure everything works correctly.');
+    rl.close();
   } else {
     console.log('\n📖 No problem! Check DEPLOYMENT_GUIDE.md when you\'re ready to deploy.');
     console.log('\n🚀 Quick start commands:');

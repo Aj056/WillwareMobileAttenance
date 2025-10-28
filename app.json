@@ -8,7 +8,7 @@
     "scheme": "willware-attendance",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "owner": "willwaretech",
+    "owner": "ajith056",
     "privacy": "unlisted",
     "platforms": [
       "android",
@@ -16,7 +16,7 @@
       "web"
     ],
     "description": "WillwareTech Employee Attendance Management System - Track attendance, view payslips, and manage employee information.",
-    "githubUrl": "https://github.com/Aj056/RefactoredTimesheet",
+    "githubUrl": "https://github.com/Aj056/WillwareMobileAttendance.git",
     "ios": {
       "bundleIdentifier": "com.willwaretech.attendance",
       "buildNumber": "1",
@@ -39,8 +39,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
+      "navigationBarBackgroundColor": "#FFFFFF",
+      "statusBarBackgroundColor": "#2196F3",
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
@@ -58,21 +60,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#1565C0",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#1565C0"
           }
         }
       ],
-      [
-        "expo-updates",
-        {
-          "username": "willwaretech"
-        }
-      ]
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -85,6 +79,12 @@
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3c22898e-3489-4993-81cc-f0f7361cc80a"
+      }
     }
   }
 }

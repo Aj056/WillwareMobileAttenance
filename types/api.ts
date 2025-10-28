@@ -165,10 +165,17 @@ export interface AllEmployeesResponse {
 
 // Motivational Quotes Types
 export interface Quote {
-  Quote: string;
-  Author: string;
-  Tags: string;
-  ID: number;
+  // Support both API response formats
+  Quote?: string;
+  Author?: string;
+  Tags?: string;
+  ID?: number;
+  // New format
+  text?: string;
+  author?: string;
+  tags?: string[];
+  id?: number;
+  author_id?: string;
 }
 
 // UI Component Types
