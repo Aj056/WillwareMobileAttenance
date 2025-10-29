@@ -142,7 +142,7 @@ export default function ProfileScreen() {
           <View style={styles.userSection}>
             <Text style={styles.userName}>{employeeDetails.employeeName}</Text>
             <Text style={styles.userEmail}>{employeeDetails.employeeEmail}</Text>
-            <Text style={styles.userId}>Employee ID: {employeeDetails._id}</Text>
+            <Text style={styles.userId}>Employee ID: {employeeDetails.wwtId || 'Not Assigned'}</Text>
           </View>
 
           <Button
@@ -155,13 +155,46 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        {/* Basic Information */}
+        {/* Personal Information */}
         <Card style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Full Name:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.employeeName}</Text>
+          </View>
           
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>Username:</Text>
             <Text style={styles.dataValue}>{employeeDetails.username || 'N/A'}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Email:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.employeeEmail}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Phone:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.phone || 'N/A'}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Address:</Text>
+            <Text style={[styles.dataValue, styles.addressText]}>
+              {employeeDetails.address || 'N/A'}
+            </Text>
+          </View>
+        </Card>
+
+        {/* Work Information */}
+        <Card style={styles.infoCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="briefcase-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Work Information</Text>
           </View>
           
           <View style={styles.dataRow}>
@@ -175,50 +208,100 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>Role:</Text>
-            <Text style={styles.dataValue}>{employeeDetails.role || 'N/A'}</Text>
-          </View>
-          
-          <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>Joining Date:</Text>
-            <Text style={styles.dataValue}>{formatDate(employeeDetails.joinDate)}</Text>
-          </View>
-          
-          <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>Status:</Text>
-            <View style={styles.statusContainer}>
-              <Text style={styles.dataValue}>
-                {employeeDetails.status ? 'Active' : 'Inactive'}
-              </Text>
-              <View style={[
-                styles.statusDot, 
-                { backgroundColor: employeeDetails.status ? Colors.success : Colors.warning }
-              ]} />
-            </View>
-          </View>
-        </Card>
-
-        {/* Contact Information */}
-        <Card style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
-          
-          <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>Phone:</Text>
-            <Text style={styles.dataValue}>{employeeDetails.phone || 'N/A'}</Text>
-          </View>
-          
-          <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>Work Location:</Text>
             <Text style={styles.dataValue}>{employeeDetails.workLocation || 'N/A'}</Text>
           </View>
           
           <View style={styles.dataRow}>
-            <Text style={styles.dataLabel}>Address:</Text>
-            <Text style={[styles.dataValue, styles.addressText]}>
-              {employeeDetails.address || 'N/A'}
-            </Text>
+            <Text style={styles.dataLabel}>Join Date:</Text>
+            <Text style={styles.dataValue}>{formatDate(employeeDetails.joinDate)}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Resource Type:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.resourceType || 'N/A'}</Text>
           </View>
         </Card>
+
+        {/* Financial Information */}
+        <Card style={styles.infoCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="card-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Financial Information</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Bank Account:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.bankAccount || 'N/A'}</Text>
+          </View>
+          
+          {employeeDetails.alternativeBankAccount && (
+            <View style={styles.dataRow}>
+              <Text style={styles.dataLabel}>Alternative Account:</Text>
+              <Text style={styles.dataValue}>{employeeDetails.alternativeBankAccount}</Text>
+            </View>
+          )}
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>PAN Number:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.panNumber || 'N/A'}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>UAN Number:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.uanNumber || 'N/A'}</Text>
+          </View>
+          
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>ESI Number:</Text>
+            <Text style={styles.dataValue}>{employeeDetails.esiNumber || 'N/A'}</Text>
+          </View>
+        </Card>
+
+        {/* Salary Information */}
+        {(employeeDetails.basicPay || employeeDetails.hra || employeeDetails.others) && (
+          <Card style={styles.infoCard}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calculator-outline" size={20} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>Salary Components</Text>
+            </View>
+            
+            {employeeDetails.basicPay ? (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataLabel}>Basic Pay:</Text>
+                <Text style={styles.dataValue}>₹{employeeDetails.basicPay}</Text>
+              </View>
+            ) : null}
+            
+            {employeeDetails.hra ? (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataLabel}>HRA:</Text>
+                <Text style={styles.dataValue}>₹{employeeDetails.hra}</Text>
+              </View>
+            ) : null}
+            
+            {employeeDetails.others ? (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataLabel}>Others:</Text>
+                <Text style={styles.dataValue}>₹{employeeDetails.others}</Text>
+              </View>
+            ) : null}
+            
+            {employeeDetails.incentive ? (
+              <View style={styles.dataRow}>
+                <Text style={styles.dataLabel}>Incentive:</Text>
+                <Text style={styles.dataValue}>₹{employeeDetails.incentive}</Text>
+              </View>
+            ) : null}
+            
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total:</Text>
+              <Text style={styles.totalValue}>
+                ₹{(employeeDetails.basicPay || 0) + (employeeDetails.hra || 0) + (employeeDetails.others || 0) + (employeeDetails.incentive || 0)}
+              </Text>
+            </View>
+          </Card>
+        )}
 
         {/* Financial Information */}
         <Card style={styles.infoCard}>
@@ -255,43 +338,7 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        {/* Recent Attendance */}
-        {employeeDetails.timelog && employeeDetails.timelog.length > 0 && (
-          <Card style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>Recent Attendance</Text>
-            
-            {employeeDetails.timelog.slice(0, 3).map((log: any, index: number) => (
-              <View key={index} style={styles.attendanceRow}>
-                <View style={styles.attendanceDate}>
-                  <Text style={styles.dateText}>{log.date}</Text>
-                </View>
-                <View style={styles.attendanceDetails}>
-                  <Text style={styles.timeText}>
-                    In: {log.checkin ? new Date(log.checkin).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    }) : 'N/A'}
-                  </Text>
-                  <Text style={styles.timeText}>
-                    Out: {log.checkout ? new Date(log.checkout).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    }) : 'N/A'}
-                  </Text>
-                  <Text style={styles.hoursText}>Hours: {log.totalhours || 'N/A'}</Text>
-                </View>
-              </View>
-            ))}
-            
-            {employeeDetails.timelog.length > 3 && (
-              <Text style={styles.moreText}>
-                + {employeeDetails.timelog.length - 3} more records
-              </Text>
-            )}
-          </Card>
-        )}
+
       </>
     );
   };
@@ -425,7 +472,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semiBold,
     color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    marginLeft: Spacing.sm,
   },
 
   dataRow: {
@@ -582,5 +629,35 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingTop: Spacing.md,
     marginBottom: Spacing.md,
+  },
+
+  // Section header styles
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+
+  // Total row styles
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: Spacing.md,
+    marginTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+
+  totalLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.primary,
+  },
+
+  totalValue: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.primary,
   },
 });

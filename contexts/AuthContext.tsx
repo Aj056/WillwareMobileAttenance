@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import * as LocalAuthentication from 'expo-local-authentication';
 import apiClient from '../services/apiClient';
 import { User, AuthState, LoginCredentials } from '../types/api';
@@ -45,12 +45,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [introCompleted, setIntroCompleted] = useState(false);
 
-  // Complete intro and proceed to auth
-  const completeIntro = () => {
+  // Complete intro and proceed to auth (memoized to prevent re-renders)
+  const completeIntro = useCallback(() => {
+    if (introCompleted) {
+      console.log('⚠️ Intro already completed, ignoring duplicate call');
+      return;
+    }
     console.log('🎬 WillwareTech intro completed, transitioning to app...');
+    setIntroCompleted(true);
     setShowIntro(false);
-  };
+  }, [introCompleted]);
 
   // Initialize authentication state on app start
   useEffect(() => {

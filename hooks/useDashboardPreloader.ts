@@ -102,9 +102,31 @@ export const useDashboardPreloader = (employeeId: string | undefined) => {
     }
   };
 
+  const refreshQuoteOnly = async () => {
+    try {
+      // Clear quote cache
+      await cache.remove('daily_quote');
+      
+      // Get new quote
+      const newQuote = await apiClient.getMotivationalQuote();
+      
+      // Update only the quote in dashboard data
+      setDashboardData(prev => ({
+        ...prev,
+        currentQuote: newQuote
+      }));
+      
+      return newQuote;
+    } catch (error) {
+      console.error('Quote refresh failed:', error);
+      throw error;
+    }
+  };
+
   return {
     ...dashboardData,
     refreshDashboardData,
-    forceRefreshAfterCheckInOut
+    forceRefreshAfterCheckInOut,
+    refreshQuoteOnly
   };
 };

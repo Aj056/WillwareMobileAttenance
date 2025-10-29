@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -40,10 +40,17 @@ function RootLayoutNav() {
     }
   }, [isLoading]);
 
+  // Memoize the intro component to prevent re-mounting
+  const introComponent = useMemo(() => {
+    if (showIntro) {
+      return <WillwareTechIntro onComplete={completeIntro} />;
+    }
+    return null;
+  }, [showIntro, completeIntro]);
+
   // Show intro loader after all hooks are called
   if (showIntro) {
-    console.log('🚀 Showing WillwareTech intro animation...');
-    return <WillwareTechIntro onComplete={completeIntro} />;
+    return introComponent;
   }
 
   return (

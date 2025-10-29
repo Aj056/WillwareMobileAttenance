@@ -21,8 +21,17 @@ export const WillwareTechIntro: React.FC<WillwareTechIntroProps> = ({ onComplete
   const slideAnim = useRef(new Animated.Value(50)).current;
   const logoRotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const hasStarted = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple animation starts
+    if (hasStarted.current) {
+      console.log('⚠️ WillwareTech intro animation already started, skipping...');
+      return;
+    }
+    
+    console.log('🎬 Starting WillwareTech intro animation...');
+    hasStarted.current = true;
     const startAnimation = () => {
       // Logo rotation animation
       Animated.loop(
@@ -81,7 +90,17 @@ export const WillwareTechIntro: React.FC<WillwareTechIntroProps> = ({ onComplete
     };
 
     startAnimation();
-  }, []);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      // Stop all animations if component unmounts
+      fadeAnim.stopAnimation();
+      scaleAnim.stopAnimation();
+      slideAnim.stopAnimation();
+      logoRotateAnim.stopAnimation();
+      pulseAnim.stopAnimation();
+    };
+  }, [onComplete]); // Include onComplete in dependencies
 
   const logoRotate = logoRotateAnim.interpolate({
     inputRange: [0, 1],

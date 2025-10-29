@@ -47,7 +47,8 @@ export default function DashboardScreen() {
     isLoading: preloaderLoading,
     error: preloaderError,
     refreshDashboardData,
-    forceRefreshAfterCheckInOut
+    forceRefreshAfterCheckInOut,
+    refreshQuoteOnly
   } = useDashboardPreloader(user?.id);
 
   // Memory cleanup
@@ -427,17 +428,18 @@ export default function DashboardScreen() {
   const refreshQuote = async () => {
     try {
       startLoading('Refreshing quote...');
-      // Clear only quote cache - don't refresh attendance data
-      const cacheManager = (await import('../../services/cacheManager')).default;
-      const cache = cacheManager.getInstance();
-      await cache.remove('daily_quote');
       
-      // Get new quote without refreshing attendance data
-      const newQuote = await apiClient.getMotivationalQuote();
+      // Use dedicated quote refresh function that updates UI state
+      const newQuote = await refreshQuoteOnly();
       
-      // Update only the quote in the dashboard data (if needed)
+      console.log('✨ Quote refreshed successfully:', { 
+        text: newQuote?.text || newQuote?.Quote, 
+        author: newQuote?.author || newQuote?.Author 
+      });
+      
       showSuccess('Quote refreshed!');
     } catch (error) {
+      console.error('Quote refresh failed:', error);
       showError('Failed to refresh quote');
     } finally {
       stopLoading();

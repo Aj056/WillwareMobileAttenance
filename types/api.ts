@@ -75,6 +75,19 @@ export interface EmployeeDetailsResponse {
     password?: string;
     resourceType?: string;
     __v?: number;
+    // Additional fields from /view API
+    wwtId?: string;
+    additionalFiled?: string;
+    alternativeBankAccount?: string | null;
+    alternativePhoneNumber?: string | null;
+    basicPay?: number;
+    esi?: number;
+    hra?: number;
+    incentive?: number;
+    others?: number;
+    pf?: number;
+    staffAdvance?: number;
+    tds?: number;
   };
 }
 
