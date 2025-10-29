@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "willware-attendance",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "owner": "ajith056",
     "privacy": "unlisted",
     "platforms": [
