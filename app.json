@@ -5,6 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "backgroundColor": "#1565C0",
+      "resizeMode": "contain"
+    },
     "scheme": "willware-attendance",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -57,6 +62,7 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/images/icon.png",
           "backgroundColor": "#1565C0",
           "dark": {
             "backgroundColor": "#1565C0"
